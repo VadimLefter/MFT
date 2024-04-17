@@ -1,7 +1,5 @@
 import 'dart:convert';
-import 'dart:developer';
-
-import 'package:fiscal_module_taxi/data/api_client/api_client.dart';
+import 'package:fiscal_module_taxi/ui/screens/home_page/home_page_view_model.dart';
 import 'package:fiscal_module_taxi/resource/app_color/app_color.dart';
 import 'package:fiscal_module_taxi/resource/app_color/app_style.dart';
 import 'package:fiscal_module_taxi/ui/screens/my_app_page/my_app_view_model.dart';
@@ -10,64 +8,50 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import 'package:receive_intent/receive_intent.dart';
 
-class HomePage extends StatefulWidget {
+class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
   @override
-  State<HomePage> createState() => _HomePageState();
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider(
+      create: (context) => HomePageViewModel(),
+      child: const _View(),
+    );
+  }
 }
 
-class _HomePageState extends State<HomePage> {
-  final _apiClient = ApiClient();
+class _View extends StatefulWidget {
+  const _View();
 
-  String _bodyTitle = 'Aşteptaţi răspunsul...';
+  @override
+  State<_View> createState() => _ViewState();
+}
 
-  Map<String, dynamic>? _response;
+class _ViewState extends State<_View> {
+
+  @override
+  void initState() {
+    final appModel = context.read<MyAppViewModel>();
+    final homePageModel = context.read<HomePageViewModel>();
+    appModel.startActivity().then((_) => homePageModel.updateBodyTitle());
+    super.initState();
+  }
 
   Future<void> _setActivityResult(Map<String, dynamic> value) async {
     await ReceiveIntent.setResult(kActivityResultOk,
         data: {'data': jsonEncode(value)}, shouldFinish: true);
   }
 
-  void _startActivity() async {
-    try {
-      final appModel = context.read<MyAppViewModel>();
-      final data = appModel.intent?.extra;
-      if (data == null) {
-        print('erroare, intentul e null');
-        return;
-      }
-      final result = data['data'];
-      final dataSend = jsonDecode(result);
-      await Future.delayed(const Duration(seconds: 5));
-      _response = {"status": "succes"}; //await _apiClient.postGetTransactionSoap(dataSend);
-      if (_response == null) {
-        print('erroare, _response e null');
-        return;
-      } else {
-        setState(() {
-          _bodyTitle = 'Răspunsul este primit!';
-        });
-        await _setActivityResult(_response!);
-      }
-    }catch(e) {
-      log(e.toString());
-    }
-  }
-
-  @override
-  void initState() {
-    _startActivity();
-    super.initState();
-  }
-
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      home: Scaffold(
+    final homePageModel = context.watch<HomePageViewModel>();
+    return Scaffold(
         floatingActionButton: FloatingActionButton(
           onPressed: () async {
-             await _setActivityResult(_response!);
+            final closeResult = {
+              'status': 'success'
+            };
+            await _setActivityResult(closeResult);
           },
           child: const Icon(Icons.exit_to_app_sharp),
         ),
@@ -86,11 +70,10 @@ class _HomePageState extends State<HomePage> {
             children: [
               const CircularProgressIndicator(),
               SizedBox(height: 25.sp),
-              Text(_bodyTitle),
+              Text(homePageModel.bodyTitle),
             ],
           ),
         ),
-      ),
-    );
+      );
   }
 }

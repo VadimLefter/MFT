@@ -5,12 +5,15 @@ import 'package:receive_intent/receive_intent.dart%20';
 import '../../../data/api_client/api_client.dart';
 import 'package:xml/xml.dart' as xml;
 
+import '../../../data/api_client/services/encode_service.dart';
+
 class MyAppViewModel {
   final Intent? intent;
 
   MyAppViewModel(this.intent);
 
   final _apiClient = ApiClient();
+  final _encodeService = EncodeService();
   Map<String, dynamic>? _closeResult;
 
   Future<void> startActivity() async {
@@ -30,7 +33,14 @@ class MyAppViewModel {
       _setActivityResult(_closeResult!);
     } catch (e) {
       log('Error startActivity: ${e.toString()}');
-      return;
+      final containsData = intent?.extra?.keys.contains('data');
+      if(containsData! == true){
+        _closeResult = { 'errorCode': -1 };
+        await _setActivityResult(_closeResult!);
+        return;
+      } else {
+        return;
+      }
     }
   }
 
@@ -50,8 +60,8 @@ class MyAppViewModel {
       _closeResult = { 'errorCode': response['errorCode'] };
       await _setActivityResult(_closeResult!);
     }
-    final soapString = response?['soap'];
-    final soapBytes = base64Decode(soapString);
+    final soapString = response?['soap'] as String;
+    final soapBytes = _encodeService.decodeData(fcid, soapString);
     return soapBytes;
   }
 
@@ -85,6 +95,7 @@ class MyAppViewModel {
         data['code'] = code;
         data['state'] = state;
         data['comment'] = comment;
+        data['response'] = response;
       }
       return data;
     } catch(e) {
@@ -98,7 +109,7 @@ class MyAppViewModel {
     DateTime dateTime = DateTime.parse(DateTime.now().toString());
     String mevDate = dateTime.toUtc().toIso8601String();
     final mevId = mevData['id'] as String;
-    final mevResponse = mevData['state'];
+    final mevResponse = mevData['response'] as String;
     final mevErrorCode = mevData['code'] as String;
     final date = mevId.isNotEmpty ? mevDate : '';
     String errorMessage = '';
@@ -106,11 +117,14 @@ class MyAppViewModel {
       errorMessage = mevData['comment'] as String;
     }
 
+    final mevIdEncode = _encodeService.encryptData(fcid, mevId);
+    final mevResponseEncode = _encodeService.encryptData(fcid, mevResponse);
+
     final body = {
       'fcid': fcid,
-      'mevid': mevId,
+      'mevid': mevIdEncode,
       'mevDate': date,
-      'mevResponse': mevResponse,
+      'mevResponse': mevResponseEncode,
       'errorMessage': errorMessage
     };
     log('body: postUpdateTransactionState : $body');
@@ -123,4 +137,6 @@ class MyAppViewModel {
     await ReceiveIntent.setResult(kActivityResultOk,
         data: {'data': jsonEncode(value)}, shouldFinish: true);
   }
+
+
 }

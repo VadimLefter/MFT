@@ -53,8 +53,6 @@ class ApiClient {
         log('addFiscalReceipt error , response:\n ${response.data}');
         String result = response.data;
         return result;
-      } else {
-        throw Exception('Failed to load data');
       }
 
     } on DioException catch(e) {

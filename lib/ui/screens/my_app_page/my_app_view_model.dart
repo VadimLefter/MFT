@@ -5,7 +5,8 @@ import 'package:receive_intent/receive_intent.dart%20';
 import '../../../data/api_client/api_client.dart';
 import 'package:xml/xml.dart' as xml;
 
-import '../../../data/api_client/services/encode_service.dart';
+import '../../../data/services/encode_service.dart';
+
 
 class MyAppViewModel {
   final Intent? intent;
@@ -110,6 +111,7 @@ class MyAppViewModel {
     String mevDate = dateTime.toUtc().toIso8601String();
     final mevId = mevData['id'] as String;
     final mevResponse = mevData['response'] as String;
+    log(mevResponse);
     final mevErrorCode = mevData['code'] as String;
     final date = mevId.isNotEmpty ? mevDate : '';
     String errorMessage = '';
@@ -137,6 +139,4 @@ class MyAppViewModel {
     await ReceiveIntent.setResult(kActivityResultOk,
         data: {'data': jsonEncode(value)}, shouldFinish: true);
   }
-
-
 }
